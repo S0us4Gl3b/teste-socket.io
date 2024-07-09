@@ -1,43 +1,41 @@
-const express = require('express')
-const path = require('path')
-const { Socket } = require('socket.io')
+const express = require('express');
+const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
 
-const app = express()
-const server = require('http').createServer(app)
-const io = require('socket.io')(server, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"]
-    }
-  });
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
-var numeroConexoes = 0
+let messages = [];
 
-app.use(express.static(path.join(__dirname, 'public')))
-app.set('views', path.join(__dirname, 'public'))
-app.engine('html', require('ejs').renderFile)
-app.set('view engine', 'html')
+app.use(express.static(path.join(__dirname, 'public')));
+app.set('views', path.join(__dirname, 'public'));
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'html');
 
-app.use('/', (req, res) => {
-    res.render('index.html')
-})
-
-let messages = []
+app.get('/', (req, res) => {
+  res.render('index.html');
+});
 
 io.on('connection', socket => {
-    console.log(`Socket conectado: ${socket.id}`)
+  console.log(`Socket conectado: ${socket.id}`);
 
-    socket.emit('previousMessages', messages)
+  socket.emit('previousMessages', messages);
 
-    socket.on('sendMessage', data => {
-        messages.push(data)
-        socket.broadcast.emit('receivedMessage', data)
-    })
+  socket.on('sendMessage', data => {
+    messages.push(data);
+    io.emit('receivedMessage', data); // Enviar a mensagem para todos os clientes
+  });
+});
 
-    numeroConexoes = numeroConexoes + 1
-    //console.log(`Numero de conexoes: ${numeroConexoes}`)
-})
+const PORT = process.env.PORT || 3000;
 
-server.listen(3000, () => {
-    console.log('Servidor rodando em http://localhost:3000')
-})
+server.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
